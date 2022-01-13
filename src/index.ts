@@ -64,6 +64,11 @@ namespace cmdShim {
      * Path to the Node.js executable
      */
     nodeExecPath?: string
+
+    /*
+     * Create executable scripts even if source file doesn't exist.
+     */
+    ignoreNotFound?: boolean
   }
 }
 type Options = cmdShim.Options
@@ -148,7 +153,8 @@ function ingestOptions (opts?: Options): InternalOptions {
  */
 async function cmdShim (src: string, to: string, opts?: Options): Promise<void> {
   const opts_ = ingestOptions(opts)
-  await opts_.fs_.stat(src)
+  if (opts_.ignoreNotFound !== true)
+    await opts_.fs_.stat(src)
   await cmdShim_(src, to, opts_)
 }
 
@@ -262,7 +268,9 @@ interface RuntimeInfo {
  * @return Promise of infomation of runtime of `target`.
  */
 async function searchScriptRuntime (target: string, opts: InternalOptions): Promise<RuntimeInfo> {
-  const data = await opts.fs_.readFile(target, 'utf8')
+  const data = (opts.ignoreNotFound === true) ?
+    await opts.fs_.readFile(target, 'utf8').catch(() => '') :
+    await opts.fs_.readFile(target, 'utf8')
 
   // First, check if the bin is a #! of some sort.
   const firstLine = data.trim().split(/\r*\n/)[0]
